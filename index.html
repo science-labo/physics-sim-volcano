@@ -3,35 +3,29 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>火山ARシミュレーター</title>
+    <title>火山ARシミュレーター（マーカーなし版）</title>
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-    
     <style>
-        /* 画面が真っ白になるのを防ぐための設定 */
-        body { margin: 0; overflow: hidden; background-color: #000; }
-        .a-canvas { position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important; }
-        
+        body { margin: 0; overflow: hidden; background: #000; }
         .ui-panel {
             position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-            width: 85%; max-width: 350px; background: rgba(0,0,0,0.7);
-            padding: 15px; border-radius: 15px; color: white; z-index: 9999; text-align: center;
-            border: 1px solid rgba(255,255,255,0.3);
+            width: 85%; max-width: 350px; background: rgba(0,0,0,0.8);
+            padding: 15px; border-radius: 15px; color: white; z-index: 1000; text-align: center;
         }
         .btn-group { display: flex; gap: 5px; margin-bottom: 10px; }
         button {
-            flex: 1; padding: 10px 5px; border: none; border-radius: 8px; font-size: 11px;
-            font-weight: bold; background: #444; color: white; cursor: pointer;
+            flex: 1; padding: 12px 5px; border: none; border-radius: 8px; font-size: 11px;
+            font-weight: bold; background: #444; color: white;
         }
         button.active { background: #ff9800; }
-        .btn-erupt { background: #f44336; width: 100%; font-size: 14px; }
-        .desc { font-size: 12px; margin-bottom: 8px; height: 3em; display: flex; align-items: center; justify-content: center; }
+        .btn-erupt { background: #f44336; width: 100%; font-size: 16px; font-weight: bold; }
+        .desc { font-size: 13px; margin-bottom: 10px; height: 3.2em; line-height: 1.4; }
     </style>
 </head>
 
 <body>
     <div class="ui-panel">
-        <div id="info-desc" class="desc">ボタンを押して火山を出現させてください</div>
+        <div id="info-desc" class="desc">【中学理科】<br>下のボタンで火山の種類を選ぼう！</div>
         <div class="btn-group">
             <button onclick="changeVolcano('dome', this)">ドーム状</button>
             <button onclick="changeVolcano('strato', this)">成層火山</button>
@@ -43,48 +37,81 @@
     <a-scene 
         embedded 
         vr-mode-ui="enabled: false"
-        arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;">
+        device-orientation-permission-ui="enabled: false">
         
-        <a-entity id="volcano-anchor" position="0 -1 -3">
+        <a-sky color="#000" opacity="0"></a-sky>
+
+        <a-entity id="volcano-center" position="0 -1 -4" rotation="0 0 0">
+            
             <a-entity id="model-dome" visible="false">
-                <a-sphere radius="0.7" scale="1 0.6 1" material="color: #888; roughness: 1;"></a-sphere>
-                <a-text value="Dome" position="0 1 0" align="center"></a-text>
-            </a-entity>
-            <a-entity id="model-strato" visible="false">
-                <a-cone radius-bottom="0.8" radius-top="0.05" height="1.5" material="color: #555;"></a-cone>
-                <a-text value="Strato" position="0 1.8 0" align="center"></a-text>
-            </a-entity>
-            <a-entity id="model-shield" visible="false">
-                <a-cylinder radius="1.5" height="0.3" material="color: #333;"></a-cylinder>
-                <a-text value="Shield" position="0 0.8 0" align="center"></a-text>
+                <a-sphere radius="0.8" scale="1 0.7 1" material="color: #ccc; roughness: 1; src: url(https://cdn.pixabay.com/photo/2016/11/19/18/59/mountain-1840333_1280.jpg)"></a-sphere>
+                <a-text value="Dome" position="0 1.2 0" align="center" width="4"></a-text>
             </a-entity>
 
-            <a-entity id="lava" visible="false" position="0 0.5 0">
-                <a-sphere radius="0.2" color="red">
-                    <a-animation attribute="position" from="0 0 0" to="0 2 0" dur="500" repeat="indefinite"></a-animation>
+            <a-entity id="model-strato" visible="false">
+                <a-cone radius-bottom="1" radius-top="0.05" height="1.8" material="color: #888; src: url(https://cdn.pixabay.com/photo/2016/11/19/18/59/mountain-1840333_1280.jpg)"></a-cone>
+                <a-text value="Strato" position="0 2.2 0" align="center" width="4"></a-text>
+            </a-entity>
+
+            <a-entity id="model-shield" visible="false">
+                <a-cylinder radius="2.5" height="0.4" material="color: #444; src: url(https://cdn.pixabay.com/photo/2017/02/16/20/45/rocks-2072340_1280.jpg)"></a-cylinder>
+                <a-text value="Shield" position="0 1 0" align="center" width="4"></a-text>
+            </a-entity>
+
+            <a-entity id="lava-container" visible="false">
+                <a-sphere id="lava-ball" radius="0.15" color="#ff4400" position="0 0 0">
+                    <a-animation attribute="position" from="0 0.5 0" to="0 3 0" dur="800" repeat="indefinite" easing="ease-out"></a-animation>
+                    <a-animation attribute="scale" from="1 1 1" to="2 2 2" dur="800" repeat="indefinite"></a-animation>
                 </a-sphere>
+                <a-light type="point" color="#ff4400" intensity="2" position="0 1 0"></a-light>
             </a-entity>
         </a-entity>
 
-        <a-entity camera></a-entity>
+        <a-entity camera look-controls wasd-controls></a-entity>
     </a-scene>
 
     <script>
+        // カメラ映像を取得する処理
+        const video = document.createElement('video');
+        video.setAttribute('autoplay', '');
+        video.setAttribute('playsinline', '');
+        video.style.position = 'fixed';
+        video.style.top = '0';
+        video.style.left = '0';
+        video.style.width = '100%';
+        video.style.height = '100%';
+        video.style.objectFit = 'cover';
+        video.style.zIndex = '-1';
+        document.body.appendChild(video);
+
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+                .then(stream => { video.srcObject = stream; })
+                .catch(err => { alert("カメラの起動に失敗しました。設定を確認してください。"); });
+        }
+
         function changeVolcano(type, btn) {
-            // 全モデルを非表示
+            // 表示切り替え
             ['dome', 'strato', 'shield'].forEach(t => {
                 document.getElementById('model-' + t).setAttribute('visible', t === type);
             });
-            // 説明文
-            const txt = {dome:"ドーム状：ねばりけが強い", strato:"成層火山：ねばりけは中くらい", shield:"楯状：ねばりけが弱い"};
-            document.getElementById('info-desc').innerText = txt[type];
-            // ボタン選択状態
+            // 説明
+            const info = {
+                dome: "【ドーム状】ねばりけ：非常に強い\n溶岩が盛り上がり、激しく噴火します。",
+                strato: "【成層火山】ねばりけ：中くらい\n溶岩と火砕物が重なり、きれいな円錐形に。",
+                shield: "【楯状火山】ねばりけ：弱い\nサラサラした溶岩が広がり、なだらかな形に。"
+            };
+            document.getElementById('info-desc').innerText = info[type];
+            // ボタン選択
             document.querySelectorAll('.btn-group button').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
+            // 噴火リセット
+            document.getElementById('lava-container').setAttribute('visible', 'false');
+            document.getElementById('erupt-btn').innerText = "噴火開始！";
         }
-
+        
         function toggleEruption() {
-            const lava = document.getElementById('lava');
+            const lava = document.getElementById('lava-container');
             const isVisible = lava.getAttribute('visible');
             lava.setAttribute('visible', !isVisible);
             document.getElementById('erupt-btn').innerText = !isVisible ? "停止" : "噴火開始！";
