@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>リアル火山AR - 中学理科</title>
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://unpkg.com/@ar-js-org/ar.js@3.5.0/aframe/build/aframe-ar.js"></script>
+    <script src="https://unpkg.com/aframe-particle-system-component@1.1.3/dist/aframe-particle-system-component.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Hiragino Kaku Gothic ProN', sans-serif; }
+        .ui-panel {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            width: 90%; max-width: 400px; background: rgba(0,0,0,0.8);
+            padding: 15px; border-radius: 15px; color: white; z-index: 1000; text-align: center;
+        }
+        .btn-group { display: flex; justify-content: space-around; margin-bottom: 10px; }
+        button {
+            padding: 8px 12px; border: none; border-radius: 8px; cursor: pointer;
+            font-weight: bold; font-size: 12px; transition: 0.3s;
+        }
+        .btn-type { background: #555; color: white; }
+        .btn-type.active { background: #ff9800; }
+        .btn-erupt { background: #f44336; color: white; width: 100%; font-size: 16px; margin-top: 5px; }
+        .desc { font-size: 13px; margin: 8px 0; line-height: 1.4; height: 3.2em; overflow: hidden; }
+    </style>
+</head>
+<body>
+    <div class="ui-panel">
+        <div id="info-desc" class="desc">下のボタンから火山の種類を選んでください</div>
+        <div class="btn-group">
+            <button class="btn-type" onclick="changeVolcano('dome', this)">ドーム状</button>
+            <button class="btn-type" onclick="changeVolcano('strato', this)">成層火山</button>
+            <button class="btn-type" onclick="changeVolcano('shield', this)">楯状火山</button>
+        </div>
+        <button id="erupt-btn" class="btn-erupt" onclick="toggleEruption()">噴火シミュレーション開始</button>
+    </div>
+
+    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" renderer="logarithmicDepthBuffer: true;">
+        <a-light type="ambient" intensity="0.6"></a-light>
+        <a-light id="lava-light" type="point" intensity="0" distance="5" position="0 1 0" color="#ff4400"></a-light>
+
+        <a-marker preset="hiro">
+            <a-entity id="volcano-group" position="0 0 0" scale="0.8 0.8 0.8">
+                
+                <a-entity id="model-dome" visible="false">
+                    <a-sphere position="0 0.3 0" radius="0.6" scale="1 0.7 1" material="roughness: 1; src: url(https://cdn.pixabay.com/photo/2016/11/19/18/59/mountain-1840333_1280.jpg); color: #999;"></a-sphere>
+                    <a-text value="Dome Volcano\n(Viscous)" position="0 1.2 0" align="center" width="3"></a-text>
+                </a-entity>
+
+                <a-entity id="model-strato" visible="false">
+                    <a-cone position="0 0.5 0" radius-bottom="0.8" radius-top="0.05" height="1.2" material="roughness: 0.8; src: url(https://cdn.pixabay.com/photo/2016/11/19/18/59/mountain-1840333_1280.jpg); color: #666;"></a-cone>
+                    <a-text value="Stratovolcano\n(Standard)" position="0 1.5 0" align="center" width="3"></a-text>
+                </a-entity>
+
+                <a-entity id="model-shield" visible="false">
+                    <a-cylinder position="0 0.1 0" radius="1.2" height="0.2" material="roughness: 1; src: url(https://cdn.pixabay.com/photo/2017/02/16/20/45/rocks-2072340_1280.jpg); color: #333;"></a-cylinder>
+                    <a-text value="Shield Volcano\n(Fluid)" position="0 0.8 0" align="center" width="3"></a-text>
+                </a-entity>
+
+                <a-entity id="eruption-effect" visible="false">
+                    <a-entity position="0 0.5 0" particle-system="color: #444,#000; size: 1.5; velocityValue: 0 2 0; accelerationValue: 0 0.5 0; particleCount: 200; texture: https://cdn.rawgit.com/mrdoob/three.js/master/examples/textures/sprites/smoke.png"></a-entity>
+                    <a-entity id="lava-particles" position="0 0.6 0" particle-system="color: #ff4400,#ff0000; size: 0.5; velocityValue: 0 3 0; accelerationValue: 0 -2 0; particleCount: 100;"></a-entity>
+                </a-entity>
+            </a-entity>
+        </a-marker>
+
+        <a-entity camera></a-entity>
+    </a-scene>
+
+    <script>
+        let isErupting = false;
+        const descriptions = {
+            dome: "【ドーム状】粘りけが非常に強く、溶岩が盛り上がっています。爆発的な噴火が特徴です。",
+            strato: "【成層火山】粘りけは中間。溶岩と砕屑物が重なり、美しい円錐形を作ります。",
+            shield: "【楯状火山】粘りけが弱く、サラサラした溶岩が広がるため、傾斜がとてもゆるやかです。"
+        };
+
+        function changeVolcano(type, btn) {
+            // 表示切り替え
+            ['dome', 'strato', 'shield'].forEach(t => {
+                document.getElementById('model-' + t).setAttribute('visible', t === type);
+            });
+            // 説明更新
+            document.getElementById('info-desc').innerText = descriptions[type];
+            // ボタン色変更
+            document.querySelectorAll('.btn-type').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            // 噴火リセット
+            stopEruption();
+        }
+
+        function toggleEruption() {
+            isErupting = !isErupting;
+            const effect = document.getElementById('eruption-effect');
+            const light = document.getElementById('lava-light');
+            const btn = document.getElementById('erupt-btn');
+
+            if (isErupting) {
+                effect.setAttribute('visible', 'true');
+                light.setAttribute('intensity', '2');
+                btn.innerText = "噴火を止める";
+            } else {
+                stopEruption();
+            }
+        }
+
+        function stopEruption() {
+            isErupting = false;
+            document.getElementById('eruption-effect').setAttribute('visible', 'false');
+            document.getElementById('lava-light').setAttribute('intensity', '0');
+            document.getElementById('erupt-btn').innerText = "噴火シミュレーション開始";
+        }
+    </script>
+</body>
+</html>
