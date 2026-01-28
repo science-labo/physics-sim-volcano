@@ -3,182 +3,128 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>絶対に見える火山AR</title>
-    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <title>常時表示火山AR</title>
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; background-color: black; }
+        body { margin: 0; overflow: hidden; background: black; }
         
         /* UIパネル */
         .ui-panel {
-            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-            width: 90%; max-width: 400px; background: rgba(0,0,0,0.85);
-            padding: 15px; border-radius: 15px; color: white; z-index: 2000; text-align: center;
-            border: 1px solid #555;
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+            width: 90%; max-width: 400px; background: rgba(0,0,0,0.8);
+            padding: 15px; border-radius: 15px; color: white; z-index: 9999; 
+            text-align: center; border: 2px solid white;
         }
         
-        .btn-group { display: flex; gap: 8px; margin-bottom: 10px; }
-        .btn-main {
-            flex: 1; padding: 12px 5px; border: none; border-radius: 8px; font-size: 11px;
-            font-weight: bold; background: #444; color: white; transition: 0.2s;
+        .btn-group { display: flex; gap: 5px; margin-bottom: 10px; }
+        button {
+            flex: 1; padding: 10px 0; border: none; border-radius: 8px; 
+            font-weight: bold; cursor: pointer; background: #666; color: white;
         }
-        .btn-main.active { background: #ff9800; color: black; }
+        button.active { background: #ff9800; color: black; }
+        .btn-erupt { background: #d32f2f; width: 100%; font-size: 16px; padding: 12px 0; }
         
-        .btn-action {
-            width: 100%; padding: 12px; margin-top: 5px;
-            font-size: 16px; font-weight: bold; border: none; border-radius: 8px;
-            background: #f44336; color: white;
+        /* 背景映像用 */
+        #cam-video {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            object-fit: cover; z-index: -1;
         }
-
-        /* 救済ボタン：画面上部に配置 */
-        #reset-btn {
-            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
-            padding: 10px 20px; background: #00bcd4; color: white;
-            border: none; border-radius: 30px; font-weight: bold;
-            box-shadow: 0 0 15px rgba(0,255,255,0.5); z-index: 2000;
-            display: flex; align-items: center; gap: 5px;
-        }
-
-        #volcano-desc { font-size: 13px; margin-bottom: 10px; min-height: 2.5em; }
     </style>
 </head>
 
 <body>
-    <video id="webcam" autoplay playsinline style="position:fixed; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:-1;"></video>
-
-    <button id="reset-btn" onclick="placeInFront()">
-        <span>📍 火山を目の前に呼ぶ</span>
-    </button>
+    <video id="cam-video" autoplay playsinline muted></video>
 
     <div class="ui-panel">
-        <div id="volcano-desc">ボタンを押して火山を選んでください</div>
+        <div style="margin-bottom:10px; font-size:14px;">火山の種類を選択</div>
         <div class="btn-group">
-            <button class="btn-main" onclick="setVolcano('dome', this)">ドーム状</button>
-            <button class="btn-main" onclick="setVolcano('strato', this)">成層火山</button>
-            <button class="btn-main" onclick="setVolcano('shield', this)">楯状火山</button>
+            <button class="active" onclick="show('dome', this)">ドーム状</button>
+            <button onclick="show('strato', this)">成層</button>
+            <button onclick="show('shield', this)">楯状</button>
         </div>
-        <button class="btn-action" id="erupt-btn" onclick="toggleEruption()">🔥 噴火させる</button>
+        <button class="btn-erupt" id="btn-action" onclick="toggleErupt()">噴火させる！</button>
     </div>
 
-    <a-scene embedded vr-mode-ui="enabled: false">
+    <a-scene embedded vr-mode-ui="enabled: false" 
+             renderer="alpha: true; antialias: true; colorManagement: true;">
         
-        <a-entity id="camera-rig" position="0 0 0">
-            <a-entity id="head" camera look-controls position="0 1.6 0"></a-entity>
-        </a-entity>
-
-        <a-light type="ambient" intensity="0.7"></a-light>
-        <a-light type="directional" position="-1 2 1" intensity="0.8"></a-light>
-
-        <a-entity id="volcano-wrapper" position="0 1.6 -3">
+        <a-entity camera look-controls="enabled: false">
             
-            <a-entity id="dome" visible="false">
-                <a-sphere radius="0.5" color="#8d6e63" position="0 0 0"></a-sphere>
-                <a-cone radius-bottom="0.6" height="0.4" color="#5d4037" position="0 -0.2 0"></a-cone>
-                <a-text value="Dome (Sticky)" position="0 1 0" align="center" scale="2 2 2"></a-text>
-            </a-entity>
+            <a-entity id="volcano-group" position="0 -0.5 -2.5">
+                
+                <a-entity id="dome" visible="true">
+                    <a-sphere color="#8d6e63" radius="0.6"></a-sphere>
+                    <a-text value="Dome" position="0 0.8 0" align="center" color="white"></a-text>
+                </a-entity>
 
-            <a-entity id="strato" visible="false">
-                <a-cone radius-bottom="0.8" radius-top="0.1" height="1.5" color="#546e7a" position="0 0 0"></a-cone>
-                <a-text value="Strato (Standard)" position="0 1.2 0" align="center" scale="2 2 2"></a-text>
-            </a-entity>
+                <a-entity id="strato" visible="false">
+                    <a-cone color="#546e7a" radius-bottom="0.8" height="1.2"></a-cone>
+                    <a-text value="Strato" position="0 0.8 0" align="center" color="white"></a-text>
+                </a-entity>
 
-            <a-entity id="shield" visible="false">
-                <a-cylinder radius="1.2" height="0.2" color="#3e2723" position="0 0 0"></a-cylinder>
-                <a-cone radius-bottom="1.2" height="0.3" color="#3e2723" position="0 0.1 0"></a-cone>
-                <a-text value="Shield (Fluid)" position="0 0.8 0" align="center" scale="2 2 2"></a-text>
-            </a-entity>
+                <a-entity id="shield" visible="false">
+                    <a-cylinder color="#3e2723" radius="1.0" height="0.2"></a-cylinder>
+                    <a-cone color="#3e2723" radius-bottom="1.0" height="0.3" position="0 0.1 0"></a-cone>
+                    <a-text value="Shield" position="0 0.5 0" align="center" color="white"></a-text>
+                </a-entity>
 
-            <a-entity id="eruption" visible="false" position="0 0.8 0">
-                <a-sphere color="#ff3d00" radius="0.15">
-                    <a-animation attribute="position" to="0 2 0" dur="1000" repeat="indefinite"></a-animation>
-                    <a-animation attribute="scale" from="1 1 1" to="3 3 3" dur="1000" repeat="indefinite" easing="ease-out"></a-animation>
-                    <a-animation attribute="material.opacity" from="1" to="0" dur="1000" repeat="indefinite"></a-animation>
-                </a-sphere>
-            </a-entity>
+                <a-sphere id="fire" color="red" radius="0.2" position="0 0.5 0" visible="false"></a-sphere>
 
-        </a-entity>
+            </a-entity> </a-entity>
     </a-scene>
 
     <script>
-        // カメラ起動処理
-        const video = document.getElementById('webcam');
+        // カメラ起動スクリプト
+        const video = document.getElementById('cam-video');
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } })
-                .then(stream => { video.srcObject = stream; })
-                .catch(err => { 
-                    alert("カメラエラー: " + err.name); 
-                    console.error(err);
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+                .then(stream => {
+                    video.srcObject = stream;
+                    video.play();
+                })
+                .catch(e => {
+                    alert("カメラエラー: " + e);
                 });
         }
 
-        // 初期設定：最初は成層火山を表示しておく
-        window.onload = function() {
-            setVolcano('strato', document.querySelectorAll('.btn-main')[1]);
-        };
-
         // 火山切り替え
-        function setVolcano(type, btn) {
-            // 全非表示
+        function show(type, btn) {
             ['dome', 'strato', 'shield'].forEach(id => {
                 document.getElementById(id).setAttribute('visible', false);
             });
-            // 選択したものを表示
             document.getElementById(type).setAttribute('visible', true);
             
-            // 説明文更新
-            const texts = {
-                dome: "【ドーム状】粘り気が強く、盛り上がった形",
-                strato: "【成層火山】バランスの良い三角の山",
-                shield: "【楯状火山】サラサラ溶岩で平べったい"
-            };
-            document.getElementById('volcano-desc').innerText = texts[type];
-
-            // ボタンのデザイン更新
-            document.querySelectorAll('.btn-main').forEach(b => b.classList.remove('active'));
-            if(btn) btn.classList.add('active');
-
+            document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
             // 噴火位置調整
-            const erup = document.getElementById('eruption');
-            if(type === 'dome') erup.setAttribute('position', '0 0.6 0');
-            if(type === 'strato') erup.setAttribute('position', '0 0.8 0');
-            if(type === 'shield') erup.setAttribute('position', '0 0.3 0');
+            const fire = document.getElementById('fire');
+            fire.setAttribute('visible', false);
+            document.getElementById('btn-action').innerText = "噴火させる！";
+            
+            if(type === 'dome') fire.setAttribute('position', '0 0.6 0');
+            if(type === 'strato') fire.setAttribute('position', '0 0.6 0');
+            if(type === 'shield') fire.setAttribute('position', '0 0.3 0');
         }
 
-        // 噴火切り替え
-        function toggleEruption() {
-            const el = document.getElementById('eruption');
-            const isVis = el.getAttribute('visible');
-            el.setAttribute('visible', !isVis);
-            document.getElementById('erupt-btn').innerText = !isVis ? "■ 噴火を止める" : "🔥 噴火させる";
-        }
+        // 噴火アニメーション
+        function toggleErupt() {
+            const fire = document.getElementById('fire');
+            const isVis = fire.getAttribute('visible');
+            fire.setAttribute('visible', !isVis);
+            
+            document.getElementById('btn-action').innerText = isVis ? "噴火させる！" : "とめる";
 
-        // ★最重要：火山を強制的に目の前に持ってくる関数
-        function placeInFront() {
-            const cameraEl = document.getElementById('head');
-            const volcanoWrapper = document.getElementById('volcano-wrapper');
-            
-            // カメラの現在の回転情報を取得
-            const rotation = cameraEl.getAttribute('rotation');
-            
-            // カメラの向きに合わせて、少し前方(-3m)に配置する計算
-            // A-Frameのシンプルな親子関係を利用せず、あえて角度だけ取得して配置しなおす簡易版
-            
-            // 現在のY軸の回転（左右の向き）を取得
-            const yRotation = rotation.y;
-            
-            // ラジアンに変換
-            const rad = yRotation * (Math.PI / 180);
-            
-            // 新しい位置を計算 (カメラの位置 0,1.6,0 を基準に)
-            // sin/cosを使って「向いている方向の3メートル先」を計算
-            const dist = 3;
-            const newX = -Math.sin(rad) * dist;
-            const newZ = -Math.cos(rad) * dist;
-            
-            // 位置と回転を適用
-            volcanoWrapper.setAttribute('position', `${newX} 1.6 ${newZ}`);
-            volcanoWrapper.setAttribute('rotation', `0 ${yRotation} 0`);
-            
-            alert("火山を目の前に移動しました！");
+            if (!isVis) {
+                // 手動アニメーション
+                let s = 1;
+                let y = fire.getAttribute('position').y;
+                const anim = setInterval(() => {
+                    if(fire.getAttribute('visible') === false) { clearInterval(anim); return; }
+                    s = s === 1 ? 1.5 : 1;
+                    fire.setAttribute('scale', `${s} ${s} ${s}`);
+                }, 200);
+            }
         }
     </script>
 </body>
